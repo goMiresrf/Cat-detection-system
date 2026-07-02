@@ -31,14 +31,14 @@ milestones.
 ### Milestone 4: Camera notification flow
 
 - [x] Implement the software path from image capture to Telegram approval
-- [ ] Verify `rpicam-still` snapshot capture on the Raspberry Pi
-- [ ] Verify camera-photo delivery to Telegram on the Raspberry Pi
+- [x] Verify `rpicam-still` snapshot capture on the Raspberry Pi
+- [x] Verify camera-photo delivery to Telegram on the Raspberry Pi
 
 ### Milestone 5: Sensor-triggered workflow
 
 - [x] Integrate PIR-triggered event handling in software
 - [x] Add event cooldown handling
-- [ ] Validate PIR-triggered events on the Raspberry Pi
+- [x] Validate PIR-triggered events on the Raspberry Pi
 
 ### Milestone 6: Detection workflow
 
