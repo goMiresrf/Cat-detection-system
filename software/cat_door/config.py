@@ -13,6 +13,7 @@ class AppConfig:
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    live_stream_url: str = ""
     pir_pin: int = 17
     reed_switch_pin: int = 27
     servo_pin: int = 18
@@ -69,6 +70,7 @@ def load_config() -> AppConfig:
     return AppConfig(
         telegram_bot_token=os.getenv("CAT_DOOR_TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.getenv("CAT_DOOR_TELEGRAM_CHAT_ID", ""),
+        live_stream_url=os.getenv("CAT_DOOR_LIVE_STREAM_URL", "").strip(),
         pir_pin=int(os.getenv("CAT_DOOR_PIR_PIN", "17")),
         reed_switch_pin=int(os.getenv("CAT_DOOR_REED_SWITCH_PIN", "27")),
         servo_pin=int(os.getenv("CAT_DOOR_SERVO_PIN", "18")),

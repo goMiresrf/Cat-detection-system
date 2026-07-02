@@ -24,6 +24,7 @@ class CatDoorWorkflow:
         reed_switch: ReedSwitch,
         motion_cooldown_seconds: int,
         approval_timeout_seconds: int,
+        live_stream_url: str,
         notify_on_any_motion: bool,
         monitor_poll_interval_seconds: float,
         gpiozero_pin_factory: str,
@@ -36,6 +37,7 @@ class CatDoorWorkflow:
         self.reed_switch = reed_switch
         self.motion_cooldown_seconds = motion_cooldown_seconds
         self.approval_timeout_seconds = approval_timeout_seconds
+        self.live_stream_url = live_stream_url
         self.notify_on_any_motion = notify_on_any_motion
         self.monitor_poll_interval_seconds = monitor_poll_interval_seconds
         self.gpiozero_pin_factory = gpiozero_pin_factory
@@ -199,6 +201,9 @@ class CatDoorWorkflow:
         detection: DetectionResult,
     ) -> str:
         """Build the human-readable Telegram caption for an event photo."""
+        live_view_line = (
+            f"Live view: {self.live_stream_url}\n" if self.live_stream_url else ""
+        )
         return (
             "Cat door event\n"
             f"Trigger: {trigger_reason}\n"
@@ -206,6 +211,7 @@ class CatDoorWorkflow:
             f"Cat likely: {detection.is_cat_likely}\n"
             f"Confidence: {detection.confidence:.2f}\n"
             f"Reason: {detection.reason}\n"
+            f"{live_view_line}"
             "Approve opening?"
         )
 

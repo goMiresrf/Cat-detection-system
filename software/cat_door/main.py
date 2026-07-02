@@ -77,6 +77,7 @@ def main() -> None:
         ),
         motion_cooldown_seconds=config.motion_cooldown_seconds,
         approval_timeout_seconds=config.approval_timeout_seconds,
+        live_stream_url=config.live_stream_url,
         notify_on_any_motion=config.notify_on_any_motion,
         monitor_poll_interval_seconds=config.monitor_poll_interval_seconds,
         gpiozero_pin_factory=config.gpiozero_pin_factory,
