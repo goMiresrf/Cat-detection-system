@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from .camera import Camera
-from .detector import DetectionResult, Detector
 from .door_controller import DoorController
-from .sensors import PirSensor, ReedSwitch
+from .sensors import PirSensor
 from .telegram_bot import TelegramBot
 
 
@@ -17,28 +17,22 @@ class CatDoorWorkflow:
     def __init__(
         self,
         camera: Camera,
-        detector: Detector,
         telegram_bot: TelegramBot,
         door_controller: DoorController,
         pir_sensor: PirSensor,
-        reed_switch: ReedSwitch,
         motion_cooldown_seconds: int,
         approval_timeout_seconds: int,
         live_stream_url: str,
-        notify_on_any_motion: bool,
         monitor_poll_interval_seconds: float,
         gpiozero_pin_factory: str,
     ) -> None:
         self.camera = camera
-        self.detector = detector
         self.telegram_bot = telegram_bot
         self.door_controller = door_controller
         self.pir_sensor = pir_sensor
-        self.reed_switch = reed_switch
         self.motion_cooldown_seconds = motion_cooldown_seconds
         self.approval_timeout_seconds = approval_timeout_seconds
         self.live_stream_url = live_stream_url
-        self.notify_on_any_motion = notify_on_any_motion
         self.monitor_poll_interval_seconds = monitor_poll_interval_seconds
         self.gpiozero_pin_factory = gpiozero_pin_factory
         self._last_motion_timestamp: float | None = None
@@ -81,16 +75,13 @@ class CatDoorWorkflow:
     def show_runtime_status(self) -> None:
         """Print a compact view of the configured runtime backends."""
         print(f"- {self.pir_sensor.describe()}")
-        print(f"- {self.reed_switch.describe()}")
         print(f"- {self.door_controller.describe()}")
-        print(f"- {self.detector.describe()}")
         print(
             "- GPIOZero pin factory: "
             f"{self.gpiozero_pin_factory or 'auto-detect'}"
         )
         print(f"- Motion cooldown: {self.motion_cooldown_seconds} seconds")
         print(f"- Approval timeout: {self.approval_timeout_seconds} seconds")
-        print(f"- Notify on any motion: {self.notify_on_any_motion}")
 
     def run_text_test(self) -> None:
         """Send a simple text message to confirm Telegram delivery works."""
@@ -120,8 +111,8 @@ class CatDoorWorkflow:
 
     def run_photo_test(self) -> None:
         """Capture a photo and run the same approval flow used for real events."""
-        detection = self._process_event(trigger_reason="photo-test", send_even_if_no_cat=True)
-        if detection is None:
+        image_path = self._process_event(trigger_reason="photo-test")
+        if image_path is None:
             print("Photo test completed without sending a notification.")
 
     def run_monitor_once(self) -> None:
@@ -132,7 +123,7 @@ class CatDoorWorkflow:
 
         print("Waiting for a PIR motion event...")
         if self.pir_sensor.wait_for_motion(timeout_seconds=None):
-            self._process_event(trigger_reason="pir", send_even_if_no_cat=False)
+            self._process_event(trigger_reason="pir")
 
     def run_monitor_loop(self) -> None:
         """Continuously wait for PIR motion and process each event."""
@@ -146,15 +137,14 @@ class CatDoorWorkflow:
                 if self.pir_sensor.wait_for_motion(
                     timeout_seconds=self.monitor_poll_interval_seconds
                 ):
-                    self._process_event(trigger_reason="pir", send_even_if_no_cat=False)
+                    self._process_event(trigger_reason="pir")
         except KeyboardInterrupt:
             print("Monitor loop stopped.")
 
     def _process_event(
         self,
         trigger_reason: str,
-        send_even_if_no_cat: bool,
-    ) -> DetectionResult | None:
+    ) -> Path | None:
         """Run the full event pipeline from capture to approval handling."""
         cooldown_remaining = self._cooldown_remaining_seconds()
         if cooldown_remaining > 0:
@@ -166,17 +156,8 @@ class CatDoorWorkflow:
 
         self._last_motion_timestamp = time.monotonic()
         image_path = self.camera.capture_snapshot()
-        detection = self.detector.detect_cat(image_path)
 
-        if not send_even_if_no_cat and not self._should_notify(detection):
-            print(
-                "Event processed but notification suppressed because detector "
-                "did not mark it as cat-likely."
-            )
-            print(f"Detector reason: {detection.reason}")
-            return detection
-
-        caption = self._build_event_caption(trigger_reason, image_path.name, detection)
+        caption = self._build_event_caption(trigger_reason, image_path.name)
         highest_update_id = self.telegram_bot.get_highest_update_id()
         self.telegram_bot.send_photo_approval_request(image_path, caption)
         print("Photo notification sent. Waiting for approval response...")
@@ -187,18 +168,17 @@ class CatDoorWorkflow:
                 f"No approval response received within "
                 f"{self.approval_timeout_seconds} seconds. Keeping door closed."
             )
-            return detection
+            return image_path
 
         if action == "Open Door":
             self.door_controller.open_temporarily()
 
-        return detection
+        return image_path
 
     def _build_event_caption(
         self,
         trigger_reason: str,
         image_name: str,
-        detection: DetectionResult,
     ) -> str:
         """Build the human-readable Telegram caption for an event photo."""
         live_view_line = (
@@ -208,9 +188,6 @@ class CatDoorWorkflow:
             "Cat door event\n"
             f"Trigger: {trigger_reason}\n"
             f"Image: {image_name}\n"
-            f"Cat likely: {detection.is_cat_likely}\n"
-            f"Confidence: {detection.confidence:.2f}\n"
-            f"Reason: {detection.reason}\n"
             f"{live_view_line}"
             "Approve opening?"
         )
@@ -246,8 +223,6 @@ class CatDoorWorkflow:
         )
         return selected_label
 
-
-
     def _cooldown_remaining_seconds(self) -> float:
         if self._last_motion_timestamp is None:
             return 0.0
@@ -255,10 +230,3 @@ class CatDoorWorkflow:
         elapsed = time.monotonic() - self._last_motion_timestamp
         remaining = self.motion_cooldown_seconds - elapsed
         return max(0.0, remaining)
-
-    def _should_notify(self, detection: DetectionResult) -> bool:
-        """Decide whether an event should notify even before manual approval."""
-        if self.notify_on_any_motion:
-            return True
-
-        return detection.is_cat_likely

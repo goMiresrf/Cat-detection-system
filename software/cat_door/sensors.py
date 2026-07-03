@@ -5,9 +5,8 @@ from __future__ import annotations
 import time
 
 try:
-    from gpiozero import Button, MotionSensor
+    from gpiozero import MotionSensor
 except Exception:  # pragma: no cover - depends on host hardware support
-    Button = None
     MotionSensor = None
 
 
@@ -100,49 +99,3 @@ class PirSensor:
             time.sleep(0.1)
 
         return False
-
-
-class ReedSwitch:
-    """Wrap the flap reed switch with a safe fallback for local development."""
-
-    def __init__(
-        self,
-        pin: int,
-        enable_hardware: bool,
-        closed_when_pressed: bool,
-    ) -> None:
-        self.pin = pin
-        self.enable_hardware = enable_hardware
-        self.closed_when_pressed = closed_when_pressed
-        self._switch = None
-        self._backend_error: str | None = None
-
-        if not enable_hardware:
-            self._backend_error = "GPIO hardware access disabled by configuration."
-            return
-
-        if Button is None:
-            self._backend_error = "gpiozero Button backend is unavailable."
-            return
-
-        try:
-            self._switch = Button(pin)
-        except Exception as exc:  # pragma: no cover - depends on host hardware
-            self._backend_error = str(exc)
-
-    def is_available(self) -> bool:
-        return self._switch is not None
-
-    def describe(self) -> str:
-        if self.is_available():
-            return f"Reed switch on GPIO {self.pin}"
-        return f"Reed switch unavailable: {self._backend_error}"
-
-    def is_closed(self) -> bool:
-        if not self._switch:
-            return True
-
-        # Different reed switch wiring styles invert the input. The config flag
-        # lets the runtime adapt without changing source code.
-        is_pressed = bool(self._switch.is_pressed)
-        return is_pressed if self.closed_when_pressed else not is_pressed

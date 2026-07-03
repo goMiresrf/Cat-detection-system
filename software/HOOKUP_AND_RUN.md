@@ -9,7 +9,6 @@ The deployment target is a Raspberry Pi system with:
 - Raspberry Pi OS
 - Pi camera connected and enabled
 - PIR motion sensor
-- reed switch on the flap
 - servo or actuator controller for the door
 - internet access for Telegram
 
@@ -38,17 +37,14 @@ Populate these values before running the system:
 CAT_DOOR_TELEGRAM_BOT_TOKEN=
 CAT_DOOR_TELEGRAM_CHAT_ID=
 CAT_DOOR_PIR_PIN=17
-CAT_DOOR_REED_SWITCH_PIN=27
 CAT_DOOR_SERVO_PIN=18
 CAT_DOOR_GPIOZERO_PIN_FACTORY=lgpio
 CAT_DOOR_ENABLE_GPIO_HARDWARE=true
 CAT_DOOR_ENABLE_SERVO_HARDWARE=true
-CAT_DOOR_NOTIFY_ON_ANY_MOTION=true
-CAT_DOOR_DETECTOR_MODE=disabled
 ```
 
-The first live deployment uses manual Telegram approval, so the detector stays
-disabled during initial hardware testing.
+PIR motion is treated as a meaningful cat-door event. The operator makes the
+open/close decision from the Telegram photo or live camera view.
 
 For Pi bring-up before hardware is attached, temporarily use:
 
@@ -61,7 +57,6 @@ CAT_DOOR_ENABLE_SERVO_HARDWARE=false
 
 - Connect the Pi camera to a camera ribbon port on the Raspberry Pi
 - Connect the PIR output wire to `CAT_DOOR_PIR_PIN`
-- Connect the reed-switch signal wire to `CAT_DOOR_REED_SWITCH_PIN`
 - Connect the servo signal wire to `CAT_DOOR_SERVO_PIN`
 - Share ground between the Raspberry Pi and the servo power supply
 - Do not power the servo directly from a GPIO signal pin
@@ -94,8 +89,7 @@ To keep the system running automatically after boot once validation is done:
 
 ### `status`
 
-Confirms whether the PIR, reed switch, servo controller, and detector backends
-are available.
+Confirms whether the PIR and servo controller backends are available.
 
 ### `text-test`
 
@@ -117,30 +111,10 @@ and runs the approval-button flow.
 Waits for one PIR event, captures an image, sends it to Telegram, and opens the
 door only when the operator approves the event.
 
-## 7. Detector command format
-
-When `CAT_DOOR_DETECTOR_MODE=command`, the configured detector command must
-write JSON to standard output in this format:
-
-```json
-{
-  "is_cat_likely": true,
-  "confidence": 0.93,
-  "reason": "cat detected near flap"
-}
-```
-
-If `is_cat_likely` is omitted, the software falls back to the confidence
-threshold in `.env`.
-
-The repository includes `detectors/template_detector.py` as the starting point
-for a future image-based cat detector.
-
-## 8. Expected live workflow
+## 7. Expected live workflow
 
 1. PIR sensor triggers
 2. Camera captures a snapshot
 3. Telegram sends the snapshot to the operator
 4. Operator selects `Open Door` or `Keep Closed`
 5. Door opens temporarily when approved
-6. Reed switch is checked after the close cycle

@@ -2,7 +2,7 @@
 
 This directory contains the software package for the smart cat door system.
 The application runs the notification and approval workflow that connects the
-camera, PIR sensor, reed switch, servo controller, and Telegram bot.
+camera, PIR sensor, servo controller, and Telegram bot.
 
 ## Current operating mode
 
@@ -13,18 +13,16 @@ The implemented operating mode is:
 3. Telegram sends the image to the operator
 4. Operator selects `Open Door` or `Keep Closed`
 5. Door opens only after approval
-6. Reed switch reports whether the flap returned to the closed state
 
-Automatic cat recognition is scaffolded in the codebase, but the delivered
-software is currently set up for manual Telegram approval as the primary live
-workflow.
+The software treats PIR motion as a meaningful cat-door event. It does not try
+to classify whether the image contains a cat; the operator decides from the
+Telegram photo or live camera view.
 
 The package also includes deployment helpers so the Raspberry Pi handoff stays
 lightweight:
 
 - `setup_pi.sh`: creates the venv, installs dependencies, and seeds `.env`
 - `install_cat_door_service.sh`: installs `monitor-loop` as a systemd service
-- `detectors/template_detector.py`: placeholder detector-command script
 
 ## Project documents
 
@@ -43,10 +41,8 @@ lightweight:
 - `cat_door/config.py`: `.env` loading and runtime settings
 - `cat_door/camera.py`: `rpicam-still` snapshot capture
 - `cat_door/telegram_bot.py`: Telegram messaging and callback handling
-- `cat_door/sensors.py`: PIR and reed switch access
+- `cat_door/sensors.py`: PIR sensor access
 - `cat_door/door_controller.py`: servo control and simulation fallback
-- `cat_door/detector.py`: detector-mode handling
-- `detectors/template_detector.py`: JSON detector command template
 - `setup_pi.sh`: Raspberry Pi bootstrap helper
 - `install_cat_door_service.sh`: boot-time monitor installer
 
@@ -92,6 +88,5 @@ Do not run `camera.py`, `workflow.py`, or the other module files directly.
 - Change camera capture settings in `cat_door/camera.py`
 - Change Telegram messages or approval buttons in `cat_door/telegram_bot.py`
 - Change workflow logic in `cat_door/workflow.py`
-- Change PIR, reed-switch, or servo settings in `.env` and `cat_door/config.py`
+- Change PIR or servo settings in `.env` and `cat_door/config.py`
 - Change hardware wrappers in `cat_door/sensors.py` and `cat_door/door_controller.py`
-- Change detector-command behavior in `cat_door/detector.py` and `detectors/`

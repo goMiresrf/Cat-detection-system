@@ -7,9 +7,8 @@ import os
 
 from .camera import Camera
 from .config import load_config
-from .detector import Detector
 from .door_controller import DoorController
-from .sensors import PirSensor, ReedSwitch
+from .sensors import PirSensor
 from .telegram_bot import TelegramBot
 from .workflow import CatDoorWorkflow
 
@@ -48,12 +47,6 @@ def main() -> None:
             config.image_output_dir,
             capture_timeout_ms=config.camera_capture_timeout_ms,
         ),
-        detector=Detector(
-            mode=config.detector_mode,
-            command=config.detector_command,
-            confidence_threshold=config.detection_confidence_threshold,
-            timeout_seconds=config.detector_command_timeout_seconds,
-        ),
         telegram_bot=TelegramBot(
             token=config.telegram_bot_token,
             chat_id=config.telegram_chat_id,
@@ -70,15 +63,9 @@ def main() -> None:
             enable_hardware=config.enable_gpio_hardware,
             settle_seconds=config.pir_settle_seconds,
         ),
-        reed_switch=ReedSwitch(
-            pin=config.reed_switch_pin,
-            enable_hardware=config.enable_gpio_hardware,
-            closed_when_pressed=config.reed_closed_when_pressed,
-        ),
         motion_cooldown_seconds=config.motion_cooldown_seconds,
         approval_timeout_seconds=config.approval_timeout_seconds,
         live_stream_url=config.live_stream_url,
-        notify_on_any_motion=config.notify_on_any_motion,
         monitor_poll_interval_seconds=config.monitor_poll_interval_seconds,
         gpiozero_pin_factory=config.gpiozero_pin_factory,
     )

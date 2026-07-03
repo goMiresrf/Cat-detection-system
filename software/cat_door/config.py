@@ -15,7 +15,6 @@ class AppConfig:
     telegram_chat_id: str = ""
     live_stream_url: str = ""
     pir_pin: int = 17
-    reed_switch_pin: int = 27
     servo_pin: int = 18
     image_output_dir: str = "captures"
     camera_capture_timeout_ms: int = 250
@@ -24,15 +23,9 @@ class AppConfig:
     approval_timeout_seconds: int = 60
     monitor_poll_interval_seconds: float = 1.0
     pir_settle_seconds: float = 3.0
-    notify_on_any_motion: bool = True
     gpiozero_pin_factory: str = ""
-    detector_mode: str = "disabled"
-    detector_command: str = ""
-    detector_command_timeout_seconds: int = 30
-    detection_confidence_threshold: float = 0.5
     enable_gpio_hardware: bool = True
     enable_servo_hardware: bool = False
-    reed_closed_when_pressed: bool = True
     servo_open_value: float = 1.0
     servo_closed_value: float = -1.0
 
@@ -72,7 +65,6 @@ def load_config() -> AppConfig:
         telegram_chat_id=os.getenv("CAT_DOOR_TELEGRAM_CHAT_ID", ""),
         live_stream_url=os.getenv("CAT_DOOR_LIVE_STREAM_URL", "").strip(),
         pir_pin=int(os.getenv("CAT_DOOR_PIR_PIN", "17")),
-        reed_switch_pin=int(os.getenv("CAT_DOOR_REED_SWITCH_PIN", "27")),
         servo_pin=int(os.getenv("CAT_DOOR_SERVO_PIN", "18")),
         image_output_dir=os.getenv("CAT_DOOR_IMAGE_OUTPUT_DIR", "captures"),
         camera_capture_timeout_ms=int(
@@ -89,22 +81,9 @@ def load_config() -> AppConfig:
             os.getenv("CAT_DOOR_MONITOR_POLL_INTERVAL_SECONDS", "1.0")
         ),
         pir_settle_seconds=float(os.getenv("CAT_DOOR_PIR_SETTLE_SECONDS", "3.0")),
-        notify_on_any_motion=_get_bool_env("CAT_DOOR_NOTIFY_ON_ANY_MOTION", True),
         gpiozero_pin_factory=os.getenv("CAT_DOOR_GPIOZERO_PIN_FACTORY", "").strip(),
-        detector_mode=os.getenv("CAT_DOOR_DETECTOR_MODE", "disabled"),
-        detector_command=os.getenv("CAT_DOOR_DETECTOR_COMMAND", ""),
-        detector_command_timeout_seconds=int(
-            os.getenv("CAT_DOOR_DETECTOR_COMMAND_TIMEOUT_SECONDS", "30")
-        ),
-        detection_confidence_threshold=float(
-            os.getenv("CAT_DOOR_DETECTION_CONFIDENCE_THRESHOLD", "0.5")
-        ),
         enable_gpio_hardware=_get_bool_env("CAT_DOOR_ENABLE_GPIO_HARDWARE", True),
         enable_servo_hardware=_get_bool_env("CAT_DOOR_ENABLE_SERVO_HARDWARE", False),
-        reed_closed_when_pressed=_get_bool_env(
-            "CAT_DOOR_REED_CLOSED_WHEN_PRESSED",
-            True,
-        ),
         servo_open_value=float(os.getenv("CAT_DOOR_SERVO_OPEN_VALUE", "1.0")),
         servo_closed_value=float(os.getenv("CAT_DOOR_SERVO_CLOSED_VALUE", "-1.0")),
     )
