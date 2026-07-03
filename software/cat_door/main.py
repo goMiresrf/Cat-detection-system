@@ -46,6 +46,7 @@ def main() -> None:
         camera=Camera(
             config.image_output_dir,
             capture_timeout_ms=config.camera_capture_timeout_ms,
+            snapshot_url=config.camera_snapshot_url,
         ),
         telegram_bot=TelegramBot(
             token=config.telegram_bot_token,
@@ -66,6 +67,7 @@ def main() -> None:
         motion_cooldown_seconds=config.motion_cooldown_seconds,
         approval_timeout_seconds=config.approval_timeout_seconds,
         live_stream_url=config.live_stream_url,
+        stream_health_url=config.stream_health_url,
         monitor_poll_interval_seconds=config.monitor_poll_interval_seconds,
         gpiozero_pin_factory=config.gpiozero_pin_factory,
     )

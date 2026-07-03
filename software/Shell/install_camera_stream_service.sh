@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SERVICE_NAME="${1:-cat-door-monitor.service}"
+SERVICE_NAME="${1:-cat-door-camera.service}"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
 RUN_USER="$(id -un)"
 RUN_GROUP="$(id -gn)"
@@ -23,7 +23,7 @@ trap 'rm -f "$TMP_FILE"' EXIT
 
 cat >"$TMP_FILE" <<EOF
 [Unit]
-Description=Cat door monitor loop
+Description=Cat door live camera stream
 After=network-online.target
 Wants=network-online.target
 
@@ -34,7 +34,7 @@ Group=${RUN_GROUP}
 WorkingDirectory=${PROJECT_DIR}
 EnvironmentFile=${PROJECT_DIR}/cat_door/.env
 Environment=PYTHONUNBUFFERED=1
-ExecStart=${PROJECT_DIR}/.venv/bin/python -m cat_door.main monitor-loop
+ExecStart=${PROJECT_DIR}/.venv/bin/python -m cat_door.live_stream
 Restart=always
 RestartSec=5
 

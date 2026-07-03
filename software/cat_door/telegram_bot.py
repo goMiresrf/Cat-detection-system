@@ -11,6 +11,14 @@ from typing import Any
 import requests
 
 
+OPEN_DOOR = "Open Door"
+CLOSE_DOOR = "Close Door"
+OPEN_CAMERA = "Open Camera"
+
+OPEN_DOOR_ACTION = "OPEN_DOOR"
+CLOSE_DOOR_ACTION = "CLOSE_DOOR"
+
+
 @dataclass(frozen=True)
 class CallbackResult:
     """Represents a callback button selection returned by Telegram."""
@@ -36,6 +44,9 @@ class TelegramBot:
     def has_chat_target(self) -> bool:
         return bool(self.chat_id)
 
+    def is_authorized_chat(self, chat_id: str | int | None) -> bool:
+        return bool(self.chat_id) and str(chat_id) == str(self.chat_id)
+
     def _require_token(self) -> None:
         if not self.has_token():
             raise RuntimeError("Telegram bot token is missing.")
@@ -56,25 +67,51 @@ class TelegramBot:
         return payload.get("result", {})
 
     @staticmethod
-    def build_approval_keyboard() -> dict[str, Any]:
-        """Build the standard inline keyboard used for door approval."""
+    def build_control_keyboard() -> dict[str, Any]:
+        """Build the persistent Telegram keyboard for everyday controls."""
         return {
-            "inline_keyboard": [
-                [{"text": "Open Door", "callback_data": "OPEN_DOOR"}],
-                [{"text": "Keep Closed", "callback_data": "KEEP_CLOSED"}],
-            ]
+            "keyboard": [
+                [{"text": OPEN_DOOR}, {"text": CLOSE_DOOR}],
+                [{"text": OPEN_CAMERA}],
+            ],
+            "resize_keyboard": True,
+            "one_time_keyboard": False,
+            "is_persistent": True,
         }
+
+    @staticmethod
+    def build_event_keyboard(live_stream_url: str = "") -> dict[str, Any]:
+        """Build inline buttons for a cat-door event alert."""
+        keyboard: list[list[dict[str, str]]] = []
+        if live_stream_url:
+            keyboard.append([{"text": OPEN_CAMERA, "url": live_stream_url}])
+
+        keyboard.append(
+            [
+                {"text": OPEN_DOOR, "callback_data": OPEN_DOOR_ACTION},
+                {"text": CLOSE_DOOR, "callback_data": CLOSE_DOOR_ACTION},
+            ]
+        )
+        return {"inline_keyboard": keyboard}
+
+    @staticmethod
+    def build_camera_keyboard(live_stream_url: str) -> dict[str, Any]:
+        """Build a single URL button for the live camera."""
+        return {"inline_keyboard": [[{"text": OPEN_CAMERA, "url": live_stream_url}]]}
 
     def send_message(
         self,
         text: str,
         reply_markup: dict[str, Any] | None = None,
+        chat_id: str | int | None = None,
     ) -> dict[str, Any]:
-        """Send a text message, optionally with inline buttons."""
+        """Send a text message, optionally with Telegram reply markup."""
         self._require_token()
-        self._require_chat_target()
+        target_chat_id = chat_id if chat_id is not None else self.chat_id
+        if not target_chat_id:
+            self._require_chat_target()
 
-        payload: dict[str, Any] = {"chat_id": self.chat_id, "text": text}
+        payload: dict[str, Any] = {"chat_id": target_chat_id, "text": text}
         if reply_markup is not None:
             payload["reply_markup"] = reply_markup
 
@@ -85,6 +122,20 @@ class TelegramBot:
         )
         result = self._parse_result(response)
         return result if isinstance(result, dict) else {}
+
+    def send_control_panel(self, text: str) -> dict[str, Any]:
+        """Send the persistent Open/Close/Camera controls."""
+        return self.send_message(
+            text,
+            reply_markup=self.build_control_keyboard(),
+        )
+
+    def send_camera_button(self, live_stream_url: str) -> dict[str, Any]:
+        """Send a clean button that opens the configured live camera URL."""
+        return self.send_message(
+            "Open the live camera below.",
+            reply_markup=self.build_camera_keyboard(live_stream_url),
+        )
 
     def send_photo(
         self,
@@ -115,19 +166,20 @@ class TelegramBot:
         """Send the initial approval request with inline action buttons."""
         return self.send_message(
             prompt_text,
-            reply_markup=self.build_approval_keyboard(),
+            reply_markup=self.build_event_keyboard(),
         )
 
     def send_photo_approval_request(
         self,
         image_path: Path,
         caption: str,
+        live_stream_url: str = "",
     ) -> dict[str, Any]:
         """Send a photo and attach the standard approval buttons."""
         return self.send_photo(
             image_path,
             caption,
-            reply_markup=self.build_approval_keyboard(),
+            reply_markup=self.build_event_keyboard(live_stream_url),
         )
 
     def get_updates(

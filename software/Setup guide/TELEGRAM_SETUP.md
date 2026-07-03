@@ -26,11 +26,11 @@ From the `software/` directory:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
+pip install -r Shell/requirements.txt
+cp cat_door/.env.example cat_door/.env
 ```
 
-Populate the bot token in `.env`:
+Populate the bot token in `cat_door/.env`:
 
 ```env
 CAT_DOOR_TELEGRAM_BOT_TOKEN=your-token-here
@@ -43,10 +43,10 @@ Leave `CAT_DOOR_TELEGRAM_CHAT_ID` blank for the next step.
 Run:
 
 ```bash
-./run_cat_door.sh show-chat-id
+./Shell/run_cat_door.sh show-chat-id
 ```
 
-Store the discovered value in `.env`:
+Store the discovered value in `cat_door/.env`:
 
 ```env
 CAT_DOOR_TELEGRAM_CHAT_ID=123456789
@@ -57,7 +57,7 @@ CAT_DOOR_TELEGRAM_CHAT_ID=123456789
 Run:
 
 ```bash
-./run_cat_door.sh text-test
+./Shell/run_cat_door.sh text-test
 ```
 
 Expected result:
@@ -70,12 +70,12 @@ Expected result:
 Run:
 
 ```bash
-./run_cat_door.sh approval-test
+./Shell/run_cat_door.sh approval-test
 ```
 
 Expected result:
 
-- the Telegram chat receives `Open Door` and `Keep Closed` buttons
+- the Telegram chat receives `Open Door` and `Close Door` buttons
 - selecting a button sends the action back to the application
 - the terminal prints the selected action
 
@@ -84,10 +84,11 @@ Expected result:
 Run this step on the Raspberry Pi after camera setup:
 
 ```bash
-./run_cat_door.sh photo-test
+./Shell/run_cat_door.sh photo-test
 ```
 
 Expected result:
 
 - the Raspberry Pi captures a snapshot
-- the Telegram chat receives the image with approval buttons
+- the Telegram chat receives the image with `Open Door`, `Close Door`, and
+  `Open Camera` controls when `CAT_DOOR_LIVE_STREAM_URL` is configured

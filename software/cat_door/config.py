@@ -16,6 +16,13 @@ class AppConfig:
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
     live_stream_url: str = ""
+    stream_health_url: str = ""
+    camera_snapshot_url: str = ""
+    stream_host: str = "0.0.0.0"
+    stream_port: int = 8080
+    stream_width: int = 640
+    stream_height: int = 480
+    stream_fps: int = 10
     pir_pin: int = 17
     servo_pin: int = 18
     image_output_dir: str = "captures"
@@ -59,13 +66,22 @@ def _get_bool_env(name: str, default: bool) -> bool:
 
 def load_config() -> AppConfig:
     """Load runtime configuration from environment variables."""
-    # Loading a project-local .env keeps local development simple in IntelliJ.
+    # Loading the package-local .env matches the current project layout.
+    _load_dotenv(Path(__file__).with_name(".env"))
+    # Loading a cwd .env keeps old local setups working when no package value exists.
     _load_dotenv(Path(".env"))
 
     return AppConfig(
         telegram_bot_token=os.getenv("CAT_DOOR_TELEGRAM_BOT_TOKEN", ""),
         telegram_chat_id=os.getenv("CAT_DOOR_TELEGRAM_CHAT_ID", ""),
         live_stream_url=os.getenv("CAT_DOOR_LIVE_STREAM_URL", "").strip(),
+        stream_health_url=os.getenv("CAT_DOOR_STREAM_HEALTH_URL", "").strip(),
+        camera_snapshot_url=os.getenv("CAT_DOOR_CAMERA_SNAPSHOT_URL", "").strip(),
+        stream_host=os.getenv("CAT_DOOR_STREAM_HOST", "0.0.0.0"),
+        stream_port=int(os.getenv("CAT_DOOR_STREAM_PORT", "8080")),
+        stream_width=int(os.getenv("CAT_DOOR_STREAM_WIDTH", "640")),
+        stream_height=int(os.getenv("CAT_DOOR_STREAM_HEIGHT", "480")),
+        stream_fps=int(os.getenv("CAT_DOOR_STREAM_FPS", "10")),
         pir_pin=int(os.getenv("CAT_DOOR_PIR_PIN", "17")),
         servo_pin=int(os.getenv("CAT_DOOR_SERVO_PIN", "18")),
         image_output_dir=os.getenv("CAT_DOOR_IMAGE_OUTPUT_DIR", "captures"),

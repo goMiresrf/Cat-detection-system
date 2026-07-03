@@ -7,6 +7,8 @@ from datetime import datetime
 import shlex
 import shutil
 import subprocess
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 class CameraError(RuntimeError):
@@ -16,15 +18,30 @@ class CameraError(RuntimeError):
 class Camera:
     """Captures still images using Raspberry Pi camera tools."""
 
-    def __init__(self, output_dir: str, capture_timeout_ms: int = 250) -> None:
+    def __init__(
+        self,
+        output_dir: str,
+        capture_timeout_ms: int = 250,
+        snapshot_url: str = "",
+        snapshot_timeout_seconds: float = 5.0,
+    ) -> None:
         self.output_dir = Path(output_dir)
         self.capture_timeout_ms = max(0, capture_timeout_ms)
+        self.snapshot_url = snapshot_url.strip()
+        self.snapshot_timeout_seconds = snapshot_timeout_seconds
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def capture_snapshot(self) -> Path:
         """Capture a still image and return the saved file path."""
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         output_path = self.output_dir / f"snapshot-{timestamp}.jpg"
+
+        if self.snapshot_url:
+            try:
+                return self._capture_snapshot_from_url(output_path)
+            except CameraError as exc:
+                print("[camera] Stream snapshot failed; falling back to camera command.")
+                print(exc)
 
         command = self._build_camera_command(output_path)
         process_timeout_seconds = max(10.0, self.capture_timeout_ms / 1000 + 10.0)
@@ -59,6 +76,58 @@ class Camera:
                 f"Expected output: {output_path}"
             )
 
+        return output_path
+
+    def _capture_snapshot_from_url(self, output_path: Path) -> Path:
+        """Save the latest frame from the live stream service."""
+        request = Request(
+            self.snapshot_url,
+            headers={"User-Agent": "cat-door-camera/1.0"},
+        )
+
+        try:
+            with urlopen(request, timeout=self.snapshot_timeout_seconds) as response:
+                status = getattr(response, "status", 200)
+                data = response.read()
+        except HTTPError as exc:
+            raise CameraError(
+                "Snapshot URL returned an HTTP error.\n"
+                f"URL: {self.snapshot_url}\n"
+                f"Status: {exc.code}"
+            ) from exc
+        except URLError as exc:
+            raise CameraError(
+                "Snapshot URL could not be reached.\n"
+                f"URL: {self.snapshot_url}\n"
+                f"Error: {exc.reason}"
+            ) from exc
+        except OSError as exc:
+            raise CameraError(
+                "Snapshot URL request failed.\n"
+                f"URL: {self.snapshot_url}\n"
+                f"Error: {exc}"
+            ) from exc
+
+        if status >= 400:
+            raise CameraError(
+                "Snapshot URL returned an unsuccessful status.\n"
+                f"URL: {self.snapshot_url}\n"
+                f"Status: {status}"
+            )
+
+        if not data:
+            raise CameraError(
+                "Snapshot URL returned an empty response.\n"
+                f"URL: {self.snapshot_url}"
+            )
+
+        if not data.startswith(b"\xff\xd8"):
+            raise CameraError(
+                "Snapshot URL did not return a JPEG image.\n"
+                f"URL: {self.snapshot_url}"
+            )
+
+        output_path.write_bytes(data)
         return output_path
 
     def _build_camera_command(self, output_path: Path) -> list[str]:

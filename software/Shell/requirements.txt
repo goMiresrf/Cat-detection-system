@@ -1,3 +1,5 @@
 gpiozero
 lgpio; platform_system == "Linux"
 requests
+# Picamera2 is installed by Raspberry Pi OS, not pip. setup_pi.sh creates the
+# venv with system site packages so cat_door.live_stream can import it.
