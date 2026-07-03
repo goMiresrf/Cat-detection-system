@@ -55,8 +55,8 @@ def main() -> None:
             servo_pin=config.servo_pin,
             open_duration_seconds=config.door_open_seconds,
             enable_hardware=config.enable_servo_hardware,
-            open_value=config.servo_open_value,
-            closed_value=config.servo_closed_value,
+            open_angle=config.latch_open_angle,
+            closed_angle=config.latch_closed_angle,
         ),
         pir_sensor=PirSensor(
             pin=config.pir_pin,

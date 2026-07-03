@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from .camera import Camera
+from .camera import Camera, CameraError
 from .door_controller import DoorController
 from .sensors import PirSensor
 from .telegram_bot import TelegramBot
@@ -155,7 +155,11 @@ class CatDoorWorkflow:
             return None
 
         self._last_motion_timestamp = time.monotonic()
-        image_path = self.camera.capture_snapshot()
+        try:
+            image_path = self.camera.capture_snapshot()
+        except CameraError as exc:
+            self._handle_camera_failure(trigger_reason, exc)
+            return None
 
         caption = self._build_event_caption(trigger_reason, image_path.name)
         highest_update_id = self.telegram_bot.get_highest_update_id()
@@ -222,6 +226,28 @@ class CatDoorWorkflow:
             f"Approval result received: {selected_label}."
         )
         return selected_label
+
+    def _handle_camera_failure(
+        self,
+        trigger_reason: str,
+        error: CameraError,
+    ) -> None:
+        """Report a camera failure without crashing the monitor loop."""
+        print("Camera snapshot failed.")
+        print(error)
+
+        message = (
+            "Camera snapshot failed.\n"
+            f"Trigger: {trigger_reason}\n\n"
+            f"{error}\n\n"
+            "Try /live if the stream is running, or check the Raspberry Pi camera."
+        )
+
+        try:
+            self.telegram_bot.send_message(message)
+        except Exception as telegram_error:
+            print("Could not send camera failure message to Telegram.")
+            print(telegram_error)
 
     def _cooldown_remaining_seconds(self) -> float:
         if self._last_motion_timestamp is None:

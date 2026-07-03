@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 
+from .door_controller import LATCH_CLOSED, LATCH_OPEN
+
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -19,15 +21,15 @@ class AppConfig:
     image_output_dir: str = "captures"
     camera_capture_timeout_ms: int = 250
     motion_cooldown_seconds: int = 30
-    door_open_seconds: int = 5
+    door_open_seconds: int = 30
     approval_timeout_seconds: int = 60
     monitor_poll_interval_seconds: float = 1.0
     pir_settle_seconds: float = 3.0
     gpiozero_pin_factory: str = ""
     enable_gpio_hardware: bool = True
     enable_servo_hardware: bool = False
-    servo_open_value: float = 1.0
-    servo_closed_value: float = -1.0
+    latch_open_angle: int = LATCH_OPEN
+    latch_closed_angle: int = LATCH_CLOSED
 
 
 def _load_dotenv(dotenv_path: Path) -> None:
@@ -73,7 +75,7 @@ def load_config() -> AppConfig:
         motion_cooldown_seconds=int(
             os.getenv("CAT_DOOR_MOTION_COOLDOWN_SECONDS", "30")
         ),
-        door_open_seconds=int(os.getenv("CAT_DOOR_DOOR_OPEN_SECONDS", "5")),
+        door_open_seconds=int(os.getenv("CAT_DOOR_DOOR_OPEN_SECONDS", "30")),
         approval_timeout_seconds=int(
             os.getenv("CAT_DOOR_APPROVAL_TIMEOUT_SECONDS", "60")
         ),
@@ -84,6 +86,16 @@ def load_config() -> AppConfig:
         gpiozero_pin_factory=os.getenv("CAT_DOOR_GPIOZERO_PIN_FACTORY", "").strip(),
         enable_gpio_hardware=_get_bool_env("CAT_DOOR_ENABLE_GPIO_HARDWARE", True),
         enable_servo_hardware=_get_bool_env("CAT_DOOR_ENABLE_SERVO_HARDWARE", False),
-        servo_open_value=float(os.getenv("CAT_DOOR_SERVO_OPEN_VALUE", "1.0")),
-        servo_closed_value=float(os.getenv("CAT_DOOR_SERVO_CLOSED_VALUE", "-1.0")),
+        latch_open_angle=int(
+            os.getenv(
+                "CAT_DOOR_LATCH_OPEN_ANGLE",
+                os.getenv("CAT_DOOR_SERVO_OPEN_ANGLE", str(LATCH_OPEN)),
+            )
+        ),
+        latch_closed_angle=int(
+            os.getenv(
+                "CAT_DOOR_LATCH_CLOSED_ANGLE",
+                os.getenv("CAT_DOOR_SERVO_CLOSED_ANGLE", str(LATCH_CLOSED)),
+            )
+        ),
     )
