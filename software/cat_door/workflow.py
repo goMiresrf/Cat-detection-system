@@ -13,6 +13,7 @@ from .sensors import PirSensor
 from .telegram_bot import (
     CLOSE_DOOR,
     CLOSE_DOOR_ACTION,
+    IgnoredCallback,
     OPEN_CAMERA,
     OPEN_DOOR,
     OPEN_DOOR_ACTION,
@@ -33,6 +34,7 @@ class CatDoorWorkflow:
         approval_timeout_seconds: int,
         live_stream_url: str,
         stream_health_url: str,
+        pir_snapshot_delay_seconds: float,
         monitor_poll_interval_seconds: float,
         gpiozero_pin_factory: str,
     ) -> None:
@@ -44,6 +46,7 @@ class CatDoorWorkflow:
         self.approval_timeout_seconds = approval_timeout_seconds
         self.live_stream_url = live_stream_url
         self.stream_health_url = stream_health_url
+        self.pir_snapshot_delay_seconds = max(0.0, pir_snapshot_delay_seconds)
         self.monitor_poll_interval_seconds = monitor_poll_interval_seconds
         self.gpiozero_pin_factory = gpiozero_pin_factory
         self._last_motion_timestamp: float | None = None
@@ -68,6 +71,20 @@ class CatDoorWorkflow:
         print(f"Telegram returned {len(updates)} update(s).")
 
         for update in updates:
+            callback_query = update.get("callback_query")
+            if callback_query:
+                message = callback_query.get("message", {})
+                chat = message.get("chat", {})
+                print(
+                    "- "
+                    f"update_id={update.get('update_id')}, "
+                    "type=callback_query, "
+                    f"chat_id={chat.get('id')}, "
+                    f"chat_type={chat.get('type')}, "
+                    f"data={callback_query.get('data')!r}"
+                )
+                continue
+
             message = update.get("message") or update.get("edited_message")
             if not message:
                 print(
@@ -95,6 +112,7 @@ class CatDoorWorkflow:
         )
         print(f"- Motion cooldown: {self.motion_cooldown_seconds} seconds")
         print(f"- Approval timeout: {self.approval_timeout_seconds} seconds")
+        print(f"- PIR snapshot delay: {self.pir_snapshot_delay_seconds} seconds")
         print(f"- Live stream URL: {self.live_stream_url or 'not configured'}")
         print(f"- Stream health URL: {self.stream_health_url or 'not configured'}")
 
@@ -178,6 +196,7 @@ class CatDoorWorkflow:
             return None
 
         self._last_motion_timestamp = time.monotonic()
+        self._wait_before_snapshot(trigger_reason)
         try:
             image_path = self.camera.capture_snapshot()
         except CameraError as exc:
@@ -234,6 +253,17 @@ class CatDoorWorkflow:
             "Choose an action."
         )
 
+    def _wait_before_snapshot(self, trigger_reason: str) -> None:
+        """Delay PIR snapshots so the cat has time to enter the camera frame."""
+        if trigger_reason != "pir" or self.pir_snapshot_delay_seconds <= 0:
+            return
+
+        print(
+            "PIR triggered. Waiting "
+            f"{self.pir_snapshot_delay_seconds:.1f} seconds before snapshot..."
+        )
+        time.sleep(self.pir_snapshot_delay_seconds)
+
     def _wait_for_approval_action(self, after_update_id: int | None) -> str | None:
         """Wait for a Telegram callback and convert it into a readable action."""
         result = self.telegram_bot.wait_for_callback(
@@ -243,6 +273,20 @@ class CatDoorWorkflow:
         )
 
         if result is None:
+            return None
+
+        if isinstance(result, IgnoredCallback):
+            self._next_update_offset = result.update_id + 1
+            print(f"Ignored Telegram callback: {result.reason}")
+            self.telegram_bot.answer_callback_query(
+                result.callback_query_id,
+                text="This button press was ignored. Check the Pi terminal.",
+            )
+            self.telegram_bot.send_message(
+                "Button press ignored.\n"
+                f"Reason: {result.reason}\n"
+                "Check CAT_DOOR_TELEGRAM_CHAT_ID in cat_door/.env."
+            )
             return None
 
         selected_label = (

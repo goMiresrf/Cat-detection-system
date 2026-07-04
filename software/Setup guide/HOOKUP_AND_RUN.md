@@ -55,10 +55,11 @@ CAT_DOOR_STREAM_WIDTH=640
 CAT_DOOR_STREAM_HEIGHT=480
 CAT_DOOR_STREAM_FPS=10
 CAT_DOOR_PIR_PIN=17
-CAT_DOOR_SERVO_PIN=18
+CAT_DOOR_SERVO_PIN=14
 CAT_DOOR_LATCH_OPEN_ANGLE=110
 CAT_DOOR_LATCH_CLOSED_ANGLE=180
 CAT_DOOR_DOOR_OPEN_SECONDS=30
+CAT_DOOR_PIR_SNAPSHOT_DELAY_SECONDS=2.0
 CAT_DOOR_GPIOZERO_PIN_FACTORY=lgpio
 CAT_DOOR_ENABLE_GPIO_HARDWARE=true
 CAT_DOOR_ENABLE_SERVO_HARDWARE=true
@@ -81,7 +82,7 @@ CAT_DOOR_ENABLE_SERVO_HARDWARE=false
 
 - Connect the Pi camera to a camera ribbon port on the Raspberry Pi
 - Connect the PIR output wire to `CAT_DOOR_PIR_PIN`
-- Connect the servo signal wire to `CAT_DOOR_SERVO_PIN`
+- Connect the servo signal wire to `CAT_DOOR_SERVO_PIN` GPIO 14
 - Share ground between the Raspberry Pi and the servo power supply
 - Do not power the servo directly from a GPIO signal pin
 

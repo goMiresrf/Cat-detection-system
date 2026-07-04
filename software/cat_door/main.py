@@ -68,6 +68,7 @@ def main() -> None:
         approval_timeout_seconds=config.approval_timeout_seconds,
         live_stream_url=config.live_stream_url,
         stream_health_url=config.stream_health_url,
+        pir_snapshot_delay_seconds=config.pir_snapshot_delay_seconds,
         monitor_poll_interval_seconds=config.monitor_poll_interval_seconds,
         gpiozero_pin_factory=config.gpiozero_pin_factory,
     )

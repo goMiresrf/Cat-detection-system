@@ -30,6 +30,17 @@ class CallbackResult:
     update_id: int
 
 
+@dataclass(frozen=True)
+class IgnoredCallback:
+    """Represents a callback button press that was seen but not accepted."""
+
+    reason: str
+    action: str
+    callback_query_id: str
+    chat_id: str
+    update_id: int
+
+
 class TelegramBot:
     """Small wrapper around the Telegram Bot API."""
 
@@ -260,7 +271,7 @@ class TelegramBot:
         expected_actions: set[str],
         after_update_id: int | None,
         timeout_seconds: int,
-    ) -> CallbackResult | None:
+    ) -> CallbackResult | IgnoredCallback | None:
         """Poll Telegram until one of the expected callback actions arrives."""
         self._require_token()
         deadline = time.monotonic() + timeout_seconds
@@ -286,9 +297,27 @@ class TelegramBot:
                 chat_id = str(chat.get("id", ""))
 
                 if self.chat_id and chat_id != self.chat_id:
-                    continue
+                    return IgnoredCallback(
+                        reason=(
+                            "chat_id_mismatch: "
+                            f"expected {self.chat_id!r}, got {chat_id!r}"
+                        ),
+                        action=data,
+                        callback_query_id=str(callback_query["id"]),
+                        chat_id=chat_id,
+                        update_id=int(update["update_id"]),
+                    )
                 if data not in expected_actions:
-                    continue
+                    return IgnoredCallback(
+                        reason=(
+                            "unexpected_action: "
+                            f"expected {sorted(expected_actions)!r}, got {data!r}"
+                        ),
+                        action=data,
+                        callback_query_id=str(callback_query["id"]),
+                        chat_id=chat_id,
+                        update_id=int(update["update_id"]),
+                    )
 
                 return CallbackResult(
                     action=data,

@@ -24,7 +24,7 @@ class AppConfig:
     stream_height: int = 480
     stream_fps: int = 10
     pir_pin: int = 17
-    servo_pin: int = 18
+    servo_pin: int = 14
     image_output_dir: str = "captures"
     camera_capture_timeout_ms: int = 250
     motion_cooldown_seconds: int = 30
@@ -32,6 +32,7 @@ class AppConfig:
     approval_timeout_seconds: int = 60
     monitor_poll_interval_seconds: float = 1.0
     pir_settle_seconds: float = 3.0
+    pir_snapshot_delay_seconds: float = 2.0
     gpiozero_pin_factory: str = ""
     enable_gpio_hardware: bool = True
     enable_servo_hardware: bool = False
@@ -83,7 +84,7 @@ def load_config() -> AppConfig:
         stream_height=int(os.getenv("CAT_DOOR_STREAM_HEIGHT", "480")),
         stream_fps=int(os.getenv("CAT_DOOR_STREAM_FPS", "10")),
         pir_pin=int(os.getenv("CAT_DOOR_PIR_PIN", "17")),
-        servo_pin=int(os.getenv("CAT_DOOR_SERVO_PIN", "18")),
+        servo_pin=int(os.getenv("CAT_DOOR_SERVO_PIN", "14")),
         image_output_dir=os.getenv("CAT_DOOR_IMAGE_OUTPUT_DIR", "captures"),
         camera_capture_timeout_ms=int(
             os.getenv("CAT_DOOR_CAMERA_CAPTURE_TIMEOUT_MS", "250")
@@ -99,6 +100,9 @@ def load_config() -> AppConfig:
             os.getenv("CAT_DOOR_MONITOR_POLL_INTERVAL_SECONDS", "1.0")
         ),
         pir_settle_seconds=float(os.getenv("CAT_DOOR_PIR_SETTLE_SECONDS", "3.0")),
+        pir_snapshot_delay_seconds=float(
+            os.getenv("CAT_DOOR_PIR_SNAPSHOT_DELAY_SECONDS", "2.0")
+        ),
         gpiozero_pin_factory=os.getenv("CAT_DOOR_GPIOZERO_PIN_FACTORY", "").strip(),
         enable_gpio_hardware=_get_bool_env("CAT_DOOR_ENABLE_GPIO_HARDWARE", True),
         enable_servo_hardware=_get_bool_env("CAT_DOOR_ENABLE_SERVO_HARDWARE", False),
