@@ -31,6 +31,7 @@ class AppConfig:
     door_open_seconds: int = 30
     approval_timeout_seconds: int = 60
     monitor_poll_interval_seconds: float = 0.2
+    telegram_poll_interval_seconds: float = 0.2
     pir_settle_seconds: float = 3.0
     pir_snapshot_delay_seconds: float = 2.0
     gpiozero_pin_factory: str = ""
@@ -98,6 +99,9 @@ def load_config() -> AppConfig:
         ),
         monitor_poll_interval_seconds=float(
             os.getenv("CAT_DOOR_MONITOR_POLL_INTERVAL_SECONDS", "0.2")
+        ),
+        telegram_poll_interval_seconds=float(
+            os.getenv("CAT_DOOR_TELEGRAM_POLL_INTERVAL_SECONDS", "0.2")
         ),
         pir_settle_seconds=float(os.getenv("CAT_DOOR_PIR_SETTLE_SECONDS", "3.0")),
         pir_snapshot_delay_seconds=float(

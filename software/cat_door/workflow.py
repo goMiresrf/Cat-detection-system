@@ -43,6 +43,7 @@ class CatDoorWorkflow:
         stream_health_url: str,
         pir_snapshot_delay_seconds: float,
         monitor_poll_interval_seconds: float,
+        telegram_poll_interval_seconds: float,
         gpiozero_pin_factory: str,
     ) -> None:
         self.camera = camera
@@ -55,12 +56,12 @@ class CatDoorWorkflow:
         self.stream_health_url = stream_health_url
         self.pir_snapshot_delay_seconds = max(0.0, pir_snapshot_delay_seconds)
         self.monitor_poll_interval_seconds = monitor_poll_interval_seconds
+        self.telegram_poll_interval_seconds = max(0.1, telegram_poll_interval_seconds)
         self.gpiozero_pin_factory = gpiozero_pin_factory
         self._last_motion_timestamp: float | None = None
         self._next_update_offset: int | None = None
         self._auto_close_at: float | None = None
         self._last_telegram_poll_timestamp = 0.0
-        self._telegram_poll_interval_seconds = 1.0
 
     def show_latest_chat_id(self) -> None:
         """Print the most recent chat ID seen by the bot."""
@@ -125,6 +126,10 @@ class CatDoorWorkflow:
         print(
             "- Monitor poll interval: "
             f"{self.monitor_poll_interval_seconds} seconds"
+        )
+        print(
+            "- Telegram poll interval: "
+            f"{self.telegram_poll_interval_seconds} seconds"
         )
         print(f"- Live stream URL: {self.live_stream_url or 'not configured'}")
         print(f"- Stream health URL: {self.stream_health_url or 'not configured'}")
@@ -374,7 +379,7 @@ class CatDoorWorkflow:
         """Read Telegram button/message controls without blocking the monitor loop."""
         updates = self.telegram_bot.get_updates(
             offset=self._next_update_offset,
-            allowed_updates=["message", "callback_query"],
+            allowed_updates=["message", "edited_message", "callback_query"],
             timeout=0,
         )
 
@@ -393,7 +398,7 @@ class CatDoorWorkflow:
         """Poll Telegram at a steady rate without slowing PIR checks."""
         now = time.monotonic()
         elapsed = now - self._last_telegram_poll_timestamp
-        if elapsed < self._telegram_poll_interval_seconds:
+        if elapsed < self.telegram_poll_interval_seconds:
             return
 
         self._last_telegram_poll_timestamp = now
@@ -456,10 +461,8 @@ class CatDoorWorkflow:
 
         action = str(callback_query.get("data", ""))
         if action == OPEN_DOOR_ACTION:
-            self._open_door()
             selected_label = OPEN_DOOR
         elif action == CLOSE_DOOR_ACTION:
-            self._close_door()
             selected_label = CLOSE_DOOR
         else:
             return
@@ -468,6 +471,12 @@ class CatDoorWorkflow:
             callback_query_id,
             text=f"Selected: {selected_label}",
         )
+
+        if action == OPEN_DOOR_ACTION:
+            self._open_door()
+        elif action == CLOSE_DOOR_ACTION:
+            self._close_door()
+
         message_id = message.get("message_id")
         if message_id is not None:
             self.telegram_bot.clear_inline_keyboard(

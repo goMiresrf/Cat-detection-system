@@ -17,6 +17,7 @@ OPEN_CAMERA = "Open Camera"
 
 OPEN_DOOR_ACTION = "OPEN_DOOR"
 CLOSE_DOOR_ACTION = "CLOSE_DOOR"
+DEFAULT_ALLOWED_UPDATES = ["message", "edited_message", "callback_query"]
 
 
 @dataclass(frozen=True)
@@ -206,10 +207,10 @@ class TelegramBot:
         params: dict[str, Any] = {"limit": limit, "timeout": timeout}
         if offset is not None:
             params["offset"] = offset
-        if allowed_updates is not None:
-            params["allowed_updates"] = json.dumps(allowed_updates)
+        update_types = allowed_updates or DEFAULT_ALLOWED_UPDATES
+        params["allowed_updates"] = json.dumps(update_types)
 
-        request_timeout_seconds = timeout + 5 if timeout > 0 else 3
+        request_timeout_seconds = timeout + 5 if timeout > 0 else 1
         response = requests.get(
             f"{self.base_url}/getUpdates",
             params=params,
@@ -282,7 +283,7 @@ class TelegramBot:
             remaining_seconds = max(1, int(deadline - time.monotonic()))
             updates = self.get_updates(
                 offset=next_offset,
-                allowed_updates=["callback_query"],
+                allowed_updates=DEFAULT_ALLOWED_UPDATES,
                 timeout=min(10, remaining_seconds),
             )
 
