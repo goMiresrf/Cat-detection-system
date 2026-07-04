@@ -1,7 +1,7 @@
 from gpiozero import AngularServo
 from time import sleep
 
-SERVO_GPIO = 18
+SERVO_GPIO = 14
 
 servo = AngularServo(
     SERVO_GPIO,
