@@ -156,9 +156,16 @@ class CatDoorWorkflow:
             return
 
         print("Waiting for a PIR motion event...")
-        if self.pir_sensor.wait_for_motion(timeout_seconds=None):
-            self._process_event(trigger_reason="pir")
-            self._wait_for_scheduled_close()
+        try:
+            while True:
+                if self.pir_sensor.motion_detected():
+                    self._process_event(trigger_reason="pir")
+                    self._wait_for_scheduled_close()
+                    return
+
+                time.sleep(self.monitor_poll_interval_seconds)
+        except KeyboardInterrupt:
+            print("Monitor once stopped.")
 
     def run_monitor_loop(self) -> None:
         """Continuously wait for PIR motion and process each event."""
@@ -173,12 +180,14 @@ class CatDoorWorkflow:
                 self._poll_telegram_controls()
                 self._close_door_if_due()
 
-                if self.pir_sensor.is_available() and self.pir_sensor.wait_for_motion(
-                    timeout_seconds=self.monitor_poll_interval_seconds
+                if (
+                    self.pir_sensor.is_available()
+                    and self.pir_sensor.motion_detected()
+                    and self._cooldown_remaining_seconds() <= 0
                 ):
                     self._process_event(trigger_reason="pir")
-                elif not self.pir_sensor.is_available():
-                    time.sleep(self.monitor_poll_interval_seconds)
+
+                time.sleep(self.monitor_poll_interval_seconds)
         except KeyboardInterrupt:
             print("Monitor loop stopped.")
 
