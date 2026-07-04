@@ -3,7 +3,7 @@ from signal import pause
 
 # Set up GPIO 22 (Physical Pin 15). 
 # pull_up=False forces it to sit at 0V until it gets a 3.3V spike.
-test_pin = Button(22, pull_up=False)
+test_pin = Button(17, pull_up=False)
 
 def on_high():
     print(" HIGH! The Pi successfully received 3.3V")
