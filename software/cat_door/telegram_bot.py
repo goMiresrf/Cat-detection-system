@@ -209,10 +209,11 @@ class TelegramBot:
         if allowed_updates is not None:
             params["allowed_updates"] = json.dumps(allowed_updates)
 
+        request_timeout_seconds = timeout + 5 if timeout > 0 else 3
         response = requests.get(
             f"{self.base_url}/getUpdates",
             params=params,
-            timeout=max(timeout + 5, 30),
+            timeout=request_timeout_seconds,
         )
         result = self._parse_result(response)
         return result if isinstance(result, list) else []

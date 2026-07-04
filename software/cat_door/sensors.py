@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 
 try:
@@ -24,6 +25,8 @@ class PirSensor:
         self.settle_seconds = settle_seconds
         self._sensor = None
         self._backend_error: str | None = None
+        self._motion_latched = False
+        self._lock = threading.Lock()
 
         # The class falls back to a "not available" state on non-Pi machines so
         # the rest of the software can still be developed and tested locally.
@@ -37,6 +40,7 @@ class PirSensor:
 
         try:
             self._sensor = DigitalInputDevice(pin, pull_up=False)
+            self._sensor.when_activated = self._mark_motion_detected
             if settle_seconds > 0:
                 time.sleep(settle_seconds)
         except Exception as exc:  # pragma: no cover - depends on host hardware
@@ -55,6 +59,16 @@ class PirSensor:
             return False
         return bool(self._sensor.is_active)
 
+    def consume_motion(self) -> bool:
+        """Return whether motion happened since the last check, then clear it."""
+        if not self._sensor:
+            return False
+
+        with self._lock:
+            motion_happened = self._motion_latched or bool(self._sensor.is_active)
+            self._motion_latched = False
+            return motion_happened
+
     def wait_for_motion(self, timeout_seconds: float | None) -> bool:
         """Wait until the PIR output goes active."""
         if not self._sensor:
@@ -72,3 +86,8 @@ class PirSensor:
                 return False
 
             time.sleep(0.05)
+
+    def _mark_motion_detected(self) -> None:
+        """Latch short PIR pulses so the workflow cannot miss them."""
+        with self._lock:
+            self._motion_latched = True

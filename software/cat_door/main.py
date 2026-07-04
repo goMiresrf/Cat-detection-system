@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
             "text-test",
             "approval-test",
             "photo-test",
+            "pir-watch",
             "monitor-once",
             "monitor-loop",
         ],
@@ -83,6 +84,8 @@ def main() -> None:
         workflow.run_text_test()
     elif args.mode == "approval-test":
         workflow.run_approval_test()
+    elif args.mode == "pir-watch":
+        workflow.run_pir_watch()
     elif args.mode == "monitor-once":
         workflow.run_monitor_once()
     elif args.mode == "monitor-loop":

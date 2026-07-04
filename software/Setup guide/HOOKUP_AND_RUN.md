@@ -98,6 +98,7 @@ Run these checks from the `software/` directory in this order:
 ./Shell/run_cat_door.sh approval-test
 ./Shell/start_camera_stream.sh
 ./Shell/run_cat_door.sh photo-test
+./Shell/run_cat_door.sh pir-watch
 ./Shell/run_cat_door.sh monitor-once
 ```
 
@@ -152,6 +153,11 @@ sends the image to Telegram, and runs the approval-button flow.
 
 Waits for one PIR event, captures an image, sends it to Telegram, and opens the
 door only when the operator approves the event.
+
+### `pir-watch`
+
+Prints PIR raw state changes and latched events so sensor behavior can be
+compared directly against a voltmeter.
 
 ## 7. Expected live workflow
 

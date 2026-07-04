@@ -59,6 +59,8 @@ class CatDoorWorkflow:
         self._last_motion_timestamp: float | None = None
         self._next_update_offset: int | None = None
         self._auto_close_at: float | None = None
+        self._last_telegram_poll_timestamp = 0.0
+        self._telegram_poll_interval_seconds = 1.0
 
     def show_latest_chat_id(self) -> None:
         """Print the most recent chat ID seen by the bot."""
@@ -120,6 +122,10 @@ class CatDoorWorkflow:
         print(f"- Motion cooldown: {self.motion_cooldown_seconds} seconds")
         print(f"- Approval timeout: {self.approval_timeout_seconds} seconds")
         print(f"- PIR snapshot delay: {self.pir_snapshot_delay_seconds} seconds")
+        print(
+            "- Monitor poll interval: "
+            f"{self.monitor_poll_interval_seconds} seconds"
+        )
         print(f"- Live stream URL: {self.live_stream_url or 'not configured'}")
         print(f"- Stream health URL: {self.stream_health_url or 'not configured'}")
 
@@ -156,6 +162,31 @@ class CatDoorWorkflow:
             print("Photo test completed without sending a notification.")
         self._wait_for_scheduled_close()
 
+    def run_pir_watch(self) -> None:
+        """Print PIR state changes and latched events for hardware tuning."""
+        if not self.pir_sensor.is_available():
+            print(self.pir_sensor.describe())
+            return
+
+        print("Watching PIR input. Press Ctrl+C to stop.")
+        last_state: bool | None = None
+        try:
+            while True:
+                current_state = self.pir_sensor.motion_detected()
+                if current_state != last_state:
+                    print(
+                        f"{time.strftime('%H:%M:%S')} "
+                        f"PIR raw state: {'motion' if current_state else 'quiet'}"
+                    )
+                    last_state = current_state
+
+                if self.pir_sensor.consume_motion():
+                    print(f"{time.strftime('%H:%M:%S')} PIR event latched")
+
+                time.sleep(0.05)
+        except KeyboardInterrupt:
+            print("PIR watch stopped.")
+
     def run_monitor_once(self) -> None:
         """Wait for one PIR event and process it."""
         if not self.pir_sensor.is_available():
@@ -165,7 +196,7 @@ class CatDoorWorkflow:
         print("Waiting for a PIR motion event...")
         try:
             while True:
-                if self.pir_sensor.motion_detected():
+                if self.pir_sensor.consume_motion():
                     self._process_event(trigger_reason="pir")
                     self._wait_for_scheduled_close()
                     return
@@ -184,16 +215,16 @@ class CatDoorWorkflow:
         print("Starting cat door monitor loop. Press Ctrl+C to stop.")
         try:
             while True:
-                self._poll_telegram_controls()
                 self._close_door_if_due()
 
                 if (
                     self.pir_sensor.is_available()
-                    and self.pir_sensor.motion_detected()
+                    and self.pir_sensor.consume_motion()
                     and self._cooldown_remaining_seconds() <= 0
                 ):
                     self._process_event(trigger_reason="pir")
 
+                self._poll_telegram_controls_if_due()
                 time.sleep(self.monitor_poll_interval_seconds)
         except KeyboardInterrupt:
             print("Monitor loop stopped.")
@@ -357,6 +388,19 @@ class CatDoorWorkflow:
             message = update.get("message") or update.get("edited_message")
             if message:
                 self._handle_message(message)
+
+    def _poll_telegram_controls_if_due(self) -> None:
+        """Poll Telegram at a steady rate without slowing PIR checks."""
+        now = time.monotonic()
+        elapsed = now - self._last_telegram_poll_timestamp
+        if elapsed < self._telegram_poll_interval_seconds:
+            return
+
+        self._last_telegram_poll_timestamp = now
+        try:
+            self._poll_telegram_controls()
+        except Exception as exc:
+            print(f"Telegram poll failed: {exc}")
 
     def _handle_message(self, message: dict) -> None:
         """Handle persistent keyboard presses and simple slash commands."""

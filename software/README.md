@@ -80,6 +80,7 @@ Do not run `camera.py`, `workflow.py`, or the other module files directly.
 ./Shell/run_cat_door.sh text-test
 ./Shell/run_cat_door.sh approval-test
 ./Shell/run_cat_door.sh photo-test
+./Shell/run_cat_door.sh pir-watch
 ./Shell/run_cat_door.sh monitor-once
 ./Shell/run_cat_door.sh monitor-loop
 ```
