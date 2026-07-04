@@ -24,6 +24,7 @@ lightweight:
 - `Shell/setup_pi.sh`: creates the venv, installs dependencies, and seeds `cat_door/.env`
 - `Shell/install_cat_door_service.sh`: installs `monitor-loop` as a systemd service
 - `Shell/install_camera_stream_service.sh`: installs the live camera stream as a systemd service
+- `Shell/install_restart_sudoers.sh`: allows Telegram to restart only the cat-door services
 
 ## Project documents
 

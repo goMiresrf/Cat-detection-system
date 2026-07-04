@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -19,6 +21,11 @@ from .telegram_bot import (
     OPEN_DOOR_ACTION,
     TelegramBot,
 )
+
+
+CAMERA_SERVICE_NAME = "cat-door-camera.service"
+MONITOR_SERVICE_NAME = "cat-door-monitor.service"
+SYSTEMCTL_COMMAND = shutil.which("systemctl") or "systemctl"
 
 
 class CatDoorWorkflow:
@@ -371,12 +378,22 @@ class CatDoorWorkflow:
             self._close_door()
         elif command in {OPEN_CAMERA.lower(), "/live"}:
             self._send_camera_button()
+        elif command == "/status":
+            self.telegram_bot.send_message(self._build_status_message())
+        elif command == "/restart_camera":
+            self._restart_camera_service()
+        elif command == "/restart_monitor":
+            self._restart_monitor_service()
         elif command in {"/start", "/help"}:
             self.telegram_bot.send_control_panel(
                 "Cat door controls:\n"
                 "- Open Door\n"
                 "- Close Door\n"
-                "- Open Camera"
+                "- Open Camera\n\n"
+                "Commands:\n"
+                "/status\n"
+                "/restart_camera\n"
+                "/restart_monitor"
             )
 
     def _handle_callback_query(self, callback_query: dict) -> None:
@@ -451,6 +468,139 @@ class CatDoorWorkflow:
             return
 
         self.telegram_bot.send_camera_button(self.live_stream_url)
+
+    def _build_status_message(self) -> str:
+        """Build a concise Telegram status report."""
+        stream_online, stream_error = self._live_stream_is_online()
+        cooldown_remaining = self._cooldown_remaining_seconds()
+        auto_close_remaining = 0.0
+        if self._auto_close_at is not None:
+            auto_close_remaining = max(0.0, self._auto_close_at - time.monotonic())
+
+        stream_status = "online" if stream_online else f"unavailable: {stream_error}"
+        pir_state = "motion" if self.pir_sensor.motion_detected() else "quiet"
+
+        return (
+            "Cat door status\n"
+            f"PIR: {self.pir_sensor.describe()} ({pir_state})\n"
+            f"Door: {self.door_controller.describe()}\n"
+            f"Camera stream: {stream_status}\n"
+            f"Camera service: {self._service_state(CAMERA_SERVICE_NAME)}\n"
+            f"Monitor service: {self._service_state(MONITOR_SERVICE_NAME)}\n"
+            f"Cooldown remaining: {cooldown_remaining:.1f}s\n"
+            f"Auto-close remaining: {auto_close_remaining:.1f}s\n"
+            f"PIR snapshot delay: {self.pir_snapshot_delay_seconds:.1f}s"
+        )
+
+    def _restart_camera_service(self) -> None:
+        """Restart the camera stream service via a narrow sudoers rule."""
+        self.telegram_bot.send_message("Restarting camera stream service...")
+        success, output = self._restart_service(CAMERA_SERVICE_NAME)
+        if success:
+            self.telegram_bot.send_message("Camera stream service restarted.")
+        else:
+            self.telegram_bot.send_message(
+                "Camera stream restart failed.\n"
+                f"{output}\n"
+                "Check sudoers setup and systemctl status."
+            )
+
+    def _restart_monitor_service(self) -> None:
+        """Ask systemd to restart this monitor service."""
+        success, output = self._sudo_can_restart(MONITOR_SERVICE_NAME)
+        if not success:
+            self.telegram_bot.send_message(
+                "Monitor restart is not permitted.\n"
+                f"{output}\n"
+                "Check sudoers setup."
+            )
+            return
+
+        self.telegram_bot.send_message("Restarting cat door monitor service...")
+        subprocess.Popen(
+            [
+                "sudo",
+                "-n",
+                SYSTEMCTL_COMMAND,
+                "--no-block",
+                "restart",
+                MONITOR_SERVICE_NAME,
+            ],
+            start_new_session=True,
+        )
+
+    def _restart_service(self, service_name: str) -> tuple[bool, str]:
+        """Restart one hardcoded systemd service and return a short result."""
+        try:
+            completed = subprocess.run(
+                ["sudo", "-n", SYSTEMCTL_COMMAND, "restart", service_name],
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            return False, "systemctl restart timed out."
+        except OSError as exc:
+            return False, f"systemctl restart could not run: {exc}"
+
+        output = "\n".join(
+            part.strip()
+            for part in (completed.stdout, completed.stderr)
+            if part.strip()
+        )
+        if completed.returncode == 0:
+            return True, output
+        return False, output or f"systemctl exited with code {completed.returncode}."
+
+    def _sudo_can_restart(self, service_name: str) -> tuple[bool, str]:
+        """Check whether passwordless sudo is available for a restart command."""
+        try:
+            completed = subprocess.run(
+                [
+                    "sudo",
+                    "-n",
+                    "-l",
+                    SYSTEMCTL_COMMAND,
+                    "--no-block",
+                    "restart",
+                    service_name,
+                ],
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired:
+            return False, "sudo permission check timed out."
+        except OSError as exc:
+            return False, f"sudo permission check could not run: {exc}"
+
+        if completed.returncode == 0:
+            return True, ""
+
+        output = "\n".join(
+            part.strip()
+            for part in (completed.stdout, completed.stderr)
+            if part.strip()
+        )
+        return False, output or f"sudo exited with code {completed.returncode}."
+
+    def _service_state(self, service_name: str) -> str:
+        """Return a compact systemd service state for Telegram status."""
+        try:
+            completed = subprocess.run(
+                [SYSTEMCTL_COMMAND, "is-active", service_name],
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=5,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return "unknown"
+
+        state = completed.stdout.strip() or completed.stderr.strip()
+        return state or "unknown"
 
     def _live_stream_is_online(self) -> tuple[bool, str]:
         """Check the local camera stream health endpoint when configured."""

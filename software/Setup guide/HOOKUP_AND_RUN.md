@@ -59,6 +59,7 @@ CAT_DOOR_SERVO_PIN=14
 CAT_DOOR_LATCH_OPEN_ANGLE=110
 CAT_DOOR_LATCH_CLOSED_ANGLE=180
 CAT_DOOR_DOOR_OPEN_SECONDS=30
+CAT_DOOR_MOTION_COOLDOWN_SECONDS=10
 CAT_DOOR_PIR_SNAPSHOT_DELAY_SECONDS=2.0
 CAT_DOOR_MONITOR_POLL_INTERVAL_SECONDS=0.2
 CAT_DOOR_GPIOZERO_PIN_FACTORY=lgpio
@@ -111,7 +112,19 @@ To keep the system running automatically after boot once validation is done:
 ```bash
 ./Shell/install_camera_stream_service.sh
 ./Shell/install_cat_door_service.sh
+./Shell/install_restart_sudoers.sh
 ```
+
+Telegram admin commands:
+
+```text
+/status
+/restart_camera
+/restart_monitor
+```
+
+The sudoers installer allows only the two restart commands above, not arbitrary
+shell access.
 
 ## 6. Expected results
 

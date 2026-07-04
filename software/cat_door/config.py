@@ -27,7 +27,7 @@ class AppConfig:
     servo_pin: int = 14
     image_output_dir: str = "captures"
     camera_capture_timeout_ms: int = 250
-    motion_cooldown_seconds: int = 30
+    motion_cooldown_seconds: int = 10
     door_open_seconds: int = 30
     approval_timeout_seconds: int = 60
     monitor_poll_interval_seconds: float = 0.2
@@ -90,7 +90,7 @@ def load_config() -> AppConfig:
             os.getenv("CAT_DOOR_CAMERA_CAPTURE_TIMEOUT_MS", "250")
         ),
         motion_cooldown_seconds=int(
-            os.getenv("CAT_DOOR_MOTION_COOLDOWN_SECONDS", "30")
+            os.getenv("CAT_DOOR_MOTION_COOLDOWN_SECONDS", "10")
         ),
         door_open_seconds=int(os.getenv("CAT_DOOR_DOOR_OPEN_SECONDS", "30")),
         approval_timeout_seconds=int(
